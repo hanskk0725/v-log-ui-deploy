@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://api.v-log.kro.kr"
+      "destination": "https://api.v-log.kro.kr/:path*"
     },
     {
       "source": "/((?!api/).*)",
