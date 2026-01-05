@@ -45,9 +45,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     } catch (error: any) {
       console.error('사용자 정보 조회 실패:', error);
-      // 에러가 발생해도 기존 userDetail은 유지
+      // 401/403 에러인 경우 세션이 만료된 것으로 간주하고 자동 로그아웃
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        setUser(null);
+        setUserDetail(null);
+        removeUserFromStorage();
+      }
+      // 다른 에러는 기존 userDetail 유지
     }
   };
+
+  // 세션 만료 시 자동 로그아웃 처리
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setUser(null);
+      setUserDetail(null);
+    };
+
+    window.addEventListener('session-expired', handleSessionExpired);
+    return () => {
+      window.removeEventListener('session-expired', handleSessionExpired);
+    };
+  }, []);
 
   useEffect(() => {
     // 새로고침 시 localStorage에서 사용자 정보 복원
@@ -64,8 +83,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setUserDetail(response.data);
             saveUserToStorage(saved.user, response.data);
           } catch (error: any) {
-            // 세션이 만료되었거나 유효하지 않으면 localStorage 정리
+            // 세션이 만료되었거나 유효하지 않으면 상태와 localStorage 정리
             if (error.response?.status === 401 || error.response?.status === 403) {
+              setUser(null);
+              setUserDetail(null);
               removeUserFromStorage();
             }
           }

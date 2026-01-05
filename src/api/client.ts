@@ -1,5 +1,6 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosError, AxiosResponse } from 'axios';
 import { ApiResponse } from '../types';
+import { removeUserFromStorage } from '../utils/storage';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
@@ -10,6 +11,20 @@ export const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// 401 에러 인터셉터: 세션 만료 시 자동 로그아웃 처리
+apiClient.interceptors.response.use(
+  (response: AxiosResponse) => response,
+  (error: AxiosError) => {
+    if (error.response?.status === 401) {
+      // 세션이 만료된 경우 localStorage 정리 및 이벤트 발생
+      removeUserFromStorage();
+      // 커스텀 이벤트를 발생시켜 AuthContext에서 감지할 수 있도록 함
+      window.dispatchEvent(new CustomEvent('session-expired'));
+    }
+    return Promise.reject(error);
+  }
+);
 
 // 에러 타입 정의
 export interface ApiError {
