@@ -21,7 +21,13 @@ const SignupPage = () => {
       // 회원가입 성공 시 로그인 페이지로 이동
       navigate('/login');
     } catch (err: any) {
-      setError(err.response?.data?.message || '회원가입에 실패했습니다.');
+      // 이메일 중복 에러인 경우 간단한 메시지로 변경
+      const errorMessage = err.response?.data?.message || '회원가입에 실패했습니다.';
+      if (err.response?.status === 409 || errorMessage.toLowerCase().includes('email')) {
+        setError('이미 존재하는 아이디입니다.');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
