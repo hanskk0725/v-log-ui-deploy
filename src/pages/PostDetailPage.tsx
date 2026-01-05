@@ -570,7 +570,7 @@ const PostDetailPage = () => {
                   <h6 className="text-base font-bold text-foreground mt-3 mb-2" {...props} />
                 ),
                 p: ({ node, ...props }) => (
-                  <p className="text-foreground/90 leading-relaxed mb-4" {...props} />
+                  <p className="text-foreground/90 leading-normal mb-2" {...props} />
                 ),
                 code: ({ node, inline, ...props }: any) => {
                   if (inline) {
