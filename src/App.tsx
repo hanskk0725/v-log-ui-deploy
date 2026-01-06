@@ -25,18 +25,20 @@ function App() {
         >
         <div className="bg-background dark:bg-background min-h-screen text-foreground flex flex-col font-display transition-colors duration-200">
           <Header />
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/posts" element={<HomePage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/posts/new" element={<PostCreatePage />} />
-            <Route path="/posts/:postId" element={<PostDetailPage />} />
-            <Route path="/posts/:postId/edit" element={<PostEditPage />} />
-            <Route path="/profile/:userId" element={<ProfilePage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/profile/edit" element={<ProtectedRoute><ProfileEditPage /></ProtectedRoute>} />
-          </Routes>
+          <div className="flex-1">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/posts" element={<HomePage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
+              <Route path="/posts/new" element={<PostCreatePage />} />
+              <Route path="/posts/:postId" element={<PostDetailPage />} />
+              <Route path="/posts/:postId/edit" element={<PostEditPage />} />
+              <Route path="/profile/:userId" element={<ProfilePage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/profile/edit" element={<ProtectedRoute><ProfileEditPage /></ProtectedRoute>} />
+            </Routes>
+          </div>
           <Footer />
           <div className="fixed bottom-6 right-6 md:hidden z-40">
             <button

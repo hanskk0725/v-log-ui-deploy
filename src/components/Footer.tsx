@@ -5,7 +5,7 @@ const Footer = () => {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="text-sm text-muted-foreground">
             <p className="font-serif font-bold text-foreground text-lg mb-1">vlog.</p>
-            <p>© 2024 vlog. All rights reserved.</p>
+            <p>© 2026 vlog. All rights reserved.</p>
           </div>
           <div className="text-sm text-muted-foreground">
             <p>개발자 블로그 플랫폼</p>

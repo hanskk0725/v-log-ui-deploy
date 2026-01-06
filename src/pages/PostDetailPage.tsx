@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import { postsApi } from '../api/posts';
 import { likesApi } from '../api/likes';
 import { followsApi } from '../api/follows';
@@ -325,11 +326,16 @@ const PostDetailPage = () => {
       const updatedComment = response.data;
       if (updatedComment && updatedComment.content) {
         setComments((prev) =>
-          prev.map((comment) =>
-            comment.commentId === commentId
-              ? { ...comment, content: updatedComment.content, updatedAt: updatedComment.updatedAt }
-              : comment
-          )
+          prev.map((comment) => {
+            if (comment.commentId === commentId) {
+              // updatedAt이 createdAt과 다르게 설정되도록 보장
+              const updatedAt = updatedComment.updatedAt && updatedComment.updatedAt !== comment.createdAt 
+                ? updatedComment.updatedAt 
+                : new Date().toISOString();
+              return { ...comment, content: updatedComment.content, updatedAt };
+            }
+            return comment;
+          })
         );
       } else {
         console.error('댓글 수정 응답 구조 오류:', response);
@@ -403,18 +409,24 @@ const PostDetailPage = () => {
       const updatedReply = response.data;
       if (updatedReply && updatedReply.content) {
         setComments((prev) =>
-          prev.map((comment) =>
-            comment.commentId === commentId
-              ? {
-                  ...comment,
-                  replies: (comment.replies || []).map((reply) =>
-                    reply.replyId === replyId
-                      ? { ...reply, content: updatedReply.content, updatedAt: updatedReply.updatedAt }
-                      : reply
-                  ),
-                }
-              : comment
-          )
+          prev.map((comment) => {
+            if (comment.commentId === commentId) {
+              return {
+                ...comment,
+                replies: (comment.replies || []).map((reply) => {
+                  if (reply.replyId === replyId) {
+                    // updatedAt이 createdAt과 다르게 설정되도록 보장
+                    const updatedAt = updatedReply.updatedAt && updatedReply.updatedAt !== reply.createdAt 
+                      ? updatedReply.updatedAt 
+                      : new Date().toISOString();
+                    return { ...reply, content: updatedReply.content, updatedAt };
+                  }
+                  return reply;
+                }),
+              };
+            }
+            return comment;
+          })
         );
       } else {
         console.error('답글 수정 응답 구조 오류:', response);
@@ -549,13 +561,13 @@ const PostDetailPage = () => {
 
           <div className="prose prose-slate dark:prose-invert max-w-none mb-8 break-words overflow-wrap-anywhere" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
             <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
+              remarkPlugins={[remarkGfm, remarkBreaks]}
               components={{
                 h1: ({ node, ...props }) => (
-                  <h1 className="text-4xl font-bold text-foreground mt-8 mb-4 pb-2 border-b border-border" {...props} />
+                  <h1 className="text-4xl font-bold text-foreground mt-8 mb-4" {...props} />
                 ),
                 h2: ({ node, ...props }) => (
-                  <h2 className="text-3xl font-bold text-foreground mt-7 mb-3 pb-2 border-b border-border" {...props} />
+                  <h2 className="text-3xl font-bold text-foreground mt-7 mb-3" {...props} />
                 ),
                 h3: ({ node, ...props }) => (
                   <h3 className="text-2xl font-bold text-foreground mt-6 mb-3" {...props} />
@@ -655,7 +667,7 @@ const PostDetailPage = () => {
                 ),
               }}
             >
-              {post.content}
+              {post.content.replace(/([^\n])---([^\n])/g, '$1\n\n---\n\n$2').replace(/([^\n])---$/gm, '$1\n\n---').replace(/^---([^\n])/gm, '---\n\n$1').replace(/^---$/gm, '\n---\n')}
             </ReactMarkdown>
           </div>
 
