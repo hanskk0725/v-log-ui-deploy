@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { followsApi } from '../api/follows';
 
 /**
@@ -16,9 +17,9 @@ export const checkFollowStatus = async (userId: number): Promise<boolean> => {
       // 언팔로우 실패는 무시
     }
     return false;
-  } catch (err: any) {
+  } catch (err: unknown) {
     // 409 Conflict는 이미 팔로우 중인 경우
-    if (err.response?.status === 409) {
+    if (axios.isAxiosError(err) && err.response?.status === 409) {
       return true;
     }
     // 다른 에러는 팔로우하지 않은 상태로 간주

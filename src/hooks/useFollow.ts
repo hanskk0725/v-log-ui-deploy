@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import axios from 'axios';
 import { followsApi } from '../api/follows';
 import { handleApiError } from '../api/client';
 
@@ -32,9 +33,9 @@ export const useFollow = (
           await followsApi.follow(targetUserId);
           setIsFollowing(true);
           onFollowChange?.(true);
-        } catch (err: any) {
+        } catch (err: unknown) {
           // 409 Conflict는 이미 팔로우 중인 경우
-          if (err.response?.status === 409) {
+          if (axios.isAxiosError(err) && err.response?.status === 409) {
             setIsFollowing(true);
             onFollowChange?.(true);
           } else {
@@ -42,9 +43,9 @@ export const useFollow = (
           }
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // 404 Not Found는 팔로우하지 않은 상태에서 언팔로우 시도한 경우
-      if (err.response?.status === 404 && isFollowing) {
+      if (axios.isAxiosError(err) && err.response?.status === 404 && isFollowing) {
         setIsFollowing(false);
         onFollowChange?.(false);
       } else {

@@ -31,15 +31,10 @@ export interface PostUpdateRequest {
 
 export const postsApi = {
   getPosts: async (params?: GetPostsParams): Promise<PageResponse<PostListResponse>> => {
-    try {
-      const response = await apiClient.get<PageResponse<PostListResponse>>('/posts', {
-        params,
-      });
-      return response.data;
-    } catch (error: any) {
-      // 에러를 상위로 전달
-      throw error;
-    }
+    const response = await apiClient.get<PageResponse<PostListResponse>>('/posts', {
+      params,
+    });
+    return response.data;
   },
 
   getPost: async (postId: number, signal?: AbortSignal): Promise<PostResponse> => {

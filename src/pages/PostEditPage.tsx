@@ -1,14 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
+import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { postsApi } from '../api/posts';
+import { handleApiError } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import ProtectedRoute from '../components/ProtectedRoute';
 
 const PostEditPage = () => {
   const { postId } = useParams<{ postId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -16,6 +20,8 @@ const PostEditPage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [unauthorized, setUnauthorized] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const titleTextareaRef = useRef<HTMLTextAreaElement>(null);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -25,19 +31,35 @@ const PostEditPage = () => {
 
       try {
         setLoading(true);
+        setError('');
+        setUnauthorized(false);
         const post = await postsApi.getPost(Number(postId));
+        
+        // 작성자 권한 체크
+        if (!user || user.userId !== post.author.userId) {
+          setUnauthorized(true);
+          setError('본인이 작성한 게시글만 수정할 수 있습니다.');
+          setRedirecting(true);
+          // 5초 후 메인 화면으로 리다이렉트
+          setTimeout(() => {
+            navigate('/');
+          }, 5000);
+          return;
+        }
+        
         setTitle(post.title);
         setContent(post.content);
         setTags(post.tags || []);
-      } catch (err: any) {
-        setError('게시글을 불러오는데 실패했습니다.');
+      } catch (err: unknown) {
+        const apiError = handleApiError(err);
+        setError(apiError.message || '게시글을 불러오는데 실패했습니다.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchPost();
-  }, [postId]);
+  }, [postId, user, navigate]);
 
   // 제목 textarea 자동 높이 조절
   useEffect(() => {
@@ -48,6 +70,7 @@ const PostEditPage = () => {
   }, [title]);
 
   const insertTextAtCursor = (before: string, after: string = '') => {
+    if (unauthorized) return;
     const textarea = contentTextareaRef.current;
     if (!textarea) return;
 
@@ -66,6 +89,7 @@ const PostEditPage = () => {
   };
 
   const insertMarkdown = (markdown: string) => {
+    if (unauthorized) return;
     const textarea = contentTextareaRef.current;
     if (!textarea) return;
 
@@ -81,6 +105,7 @@ const PostEditPage = () => {
   };
 
   const insertHorizontalRule = () => {
+    if (unauthorized) return;
     const textarea = contentTextareaRef.current;
     if (!textarea) return;
 
@@ -178,8 +203,9 @@ const PostEditPage = () => {
         tags: tags.length > 0 ? tags : undefined,
       });
       navigate(`/posts/${response.postId}`);
-    } catch (err: any) {
-      setError(err.response?.data?.message || '게시글 수정에 실패했습니다.');
+    } catch (err: unknown) {
+      const apiError = handleApiError(err);
+      setError(apiError.message || '게시글 수정에 실패했습니다.');
     } finally {
       setSaving(false);
     }
@@ -190,6 +216,38 @@ const PostEditPage = () => {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-muted-foreground">로딩 중...</div>
       </div>
+    );
+  }
+
+  // 권한이 없는 경우 에러 페이지 표시
+  if (unauthorized) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="max-w-md w-full mx-auto px-6 text-center">
+            <div className="mb-6">
+              <span className="material-symbols-outlined text-6xl text-red-500 dark:text-red-400 mb-4 block">
+                block
+              </span>
+              <h1 className="text-2xl font-bold text-foreground mb-2">접근 권한이 없습니다</h1>
+              <p className="text-muted-foreground mb-4">
+                {error || '본인이 작성한 게시글만 수정할 수 있습니다.'}
+              </p>
+              {redirecting && (
+                <p className="text-sm text-muted-foreground">
+                  잠시 후 메인 화면으로 이동합니다...
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => navigate('/')}
+              className="px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
+            >
+              메인 화면으로 이동
+            </button>
+          </div>
+        </div>
+      </ProtectedRoute>
     );
   }
 
@@ -212,7 +270,7 @@ const PostEditPage = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={handleSave}
-              disabled={saving || !title.trim() || !content.trim()}
+              disabled={saving || !title.trim() || !content.trim() || unauthorized}
               className="px-4 py-2 bg-primary text-white rounded-md font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_0_15px_rgba(13,204,242,0.3)]"
             >
               {saving ? '수정 중...' : '수정하기'}
@@ -237,7 +295,8 @@ const PostEditPage = () => {
                   ref={titleTextareaRef}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-transparent border-none text-4xl sm:text-5xl font-extrabold text-slate-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#55757d] focus:ring-0 resize-none overflow-hidden leading-tight p-0"
+                  disabled={unauthorized}
+                  className="w-full bg-transparent border-none text-4xl sm:text-5xl font-extrabold text-slate-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#55757d] focus:ring-0 resize-none overflow-hidden leading-tight p-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="Title"
                   rows={1}
                   style={{ height: '64px' }}
@@ -259,7 +318,8 @@ const PostEditPage = () => {
                           <button
                             type="button"
                             onClick={() => handleRemoveTag(tag)}
-                            className="text-primary/70 hover:text-primary transition-colors"
+                            disabled={unauthorized}
+                            className="text-primary/70 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             aria-label={`Remove ${tag} tag`}
                           >
                             <span className="material-symbols-outlined text-[16px]">close</span>
@@ -279,7 +339,8 @@ const PostEditPage = () => {
                         handleRemoveTag(tags[tags.length - 1]);
                       }
                     }}
-                    className="flex-1 bg-transparent border-none focus:ring-0 text-base text-slate-700 dark:text-gray-300 placeholder:text-gray-400 dark:placeholder:text-[#55757d] min-w-[120px] p-0 h-8 outline-none"
+                    disabled={unauthorized}
+                    className="flex-1 bg-transparent border-none focus:ring-0 text-base text-slate-700 dark:text-gray-300 placeholder:text-gray-400 dark:placeholder:text-[#55757d] min-w-[120px] p-0 h-8 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder={tags.length === 0 ? "태그를 입력하고 Enter 또는 쉼표(,)를 누르세요" : "태그 추가..."}
                   />
                 </div>
@@ -294,7 +355,8 @@ const PostEditPage = () => {
                   <div className="flex items-center gap-1 border-r border-border pr-2 sm:pr-4 shrink-0">
                     <button
                       type="button"
-                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                      disabled={unauthorized}
+                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Heading 1"
                       onClick={() => insertMarkdown('# ')}
                     >
@@ -302,7 +364,8 @@ const PostEditPage = () => {
                     </button>
                     <button
                       type="button"
-                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                      disabled={unauthorized}
+                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Heading 2"
                       onClick={() => insertMarkdown('## ')}
                     >
@@ -310,7 +373,8 @@ const PostEditPage = () => {
                     </button>
                     <button
                       type="button"
-                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                      disabled={unauthorized}
+                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Heading 3"
                       onClick={() => insertMarkdown('### ')}
                     >
@@ -318,7 +382,8 @@ const PostEditPage = () => {
                     </button>
                     <button
                       type="button"
-                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                      disabled={unauthorized}
+                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Heading 4"
                       onClick={() => insertMarkdown('#### ')}
                     >
@@ -328,7 +393,8 @@ const PostEditPage = () => {
                   <div className="flex items-center gap-1 border-r border-border pr-2 sm:pr-4 shrink-0">
                     <button
                       type="button"
-                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                      disabled={unauthorized}
+                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Bold (Ctrl+B)"
                       onClick={() => insertTextAtCursor('**', '**')}
                     >
@@ -336,7 +402,8 @@ const PostEditPage = () => {
                     </button>
                     <button
                       type="button"
-                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                      disabled={unauthorized}
+                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Italic (Ctrl+I)"
                       onClick={() => insertTextAtCursor('*', '*')}
                     >
@@ -344,7 +411,8 @@ const PostEditPage = () => {
                     </button>
                     <button
                       type="button"
-                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                      disabled={unauthorized}
+                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Strikethrough"
                       onClick={() => insertTextAtCursor('~~', '~~')}
                     >
@@ -354,7 +422,8 @@ const PostEditPage = () => {
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       type="button"
-                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                      disabled={unauthorized}
+                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Quote"
                       onClick={() => insertMarkdown('\n> ')}
                     >
@@ -362,7 +431,8 @@ const PostEditPage = () => {
                     </button>
                     <button
                       type="button"
-                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                      disabled={unauthorized}
+                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Code Block"
                       onClick={() => insertMarkdown('\n```\n코드\n```\n')}
                     >
@@ -370,7 +440,8 @@ const PostEditPage = () => {
                     </button>
                     <button
                       type="button"
-                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                      disabled={unauthorized}
+                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Horizontal Rule"
                       onClick={insertHorizontalRule}
                     >
@@ -390,7 +461,8 @@ const PostEditPage = () => {
                     ref={contentTextareaRef}
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    className="w-full bg-card border border-input rounded-lg p-4 pl-16 focus:ring-2 focus:ring-ring focus:border-primary resize-none text-base leading-relaxed text-foreground placeholder:text-muted-foreground min-h-[600px] font-mono transition-all"
+                    disabled={unauthorized}
+                    className="w-full bg-card border border-input rounded-lg p-4 pl-16 focus:ring-2 focus:ring-ring focus:border-primary resize-none text-base leading-relaxed text-foreground placeholder:text-muted-foreground min-h-[600px] font-mono transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder={`# 마크다운으로 작성하세요
 
 ## 제목 사용법
@@ -459,7 +531,7 @@ const PostEditPage = () => {
                     p: ({ node, ...props }) => (
                       <p className="text-slate-700 dark:text-slate-300 leading-relaxed mb-4" {...props} />
                     ),
-                    code: ({ node, inline, ...props }: any) => {
+                    code: ({ inline, ...props }: Components['code']) => {
                       if (inline) {
                         return (
                           <code

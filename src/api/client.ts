@@ -30,13 +30,13 @@ apiClient.interceptors.response.use(
 export interface ApiError {
   message: string;
   status?: number;
-  data?: any;
+  data?: unknown;
 }
 
 // API 에러 처리 헬퍼
 export const handleApiError = (error: unknown): ApiError => {
   if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError<ApiResponse<any>>;
+    const axiosError = error as AxiosError<ApiResponse<unknown>>;
     return {
       message: axiosError.response?.data?.message || axiosError.message || '알 수 없는 오류가 발생했습니다.',
       status: axiosError.response?.status,

@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
+import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { postsApi } from '../api/posts';
+import { handleApiError } from '../api/client';
 import ProtectedRoute from '../components/ProtectedRoute';
 
 const PostCreatePage = () => {
@@ -156,8 +159,9 @@ const PostCreatePage = () => {
         tags: tags.length > 0 ? tags : undefined,
       });
       navigate(`/posts/${response.postId}`);
-    } catch (err: any) {
-      setError(err.response?.data?.message || '게시글 작성에 실패했습니다.');
+    } catch (err: unknown) {
+      const apiError = handleApiError(err);
+      setError(apiError.message || '게시글 작성에 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -436,7 +440,7 @@ const PostCreatePage = () => {
                     p: ({ node, ...props }) => (
                       <p className="text-slate-700 dark:text-slate-300 leading-relaxed mb-4" {...props} />
                     ),
-                    code: ({ node, inline, ...props }: any) => {
+                    code: ({ inline, ...props }: Components['code']) => {
                       if (inline) {
                         return (
                           <code

@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import axios from 'axios';
 import { likesApi } from '../api/likes';
 import { handleApiError } from '../api/client';
 
@@ -45,12 +46,12 @@ export const usePostLike = (
         try {
           await likesApi.addLike(postId);
           // 팔로우는 성공했으므로 optimistic update 유지
-        } catch (err: any) {
+        } catch (err: unknown) {
           // 409 Conflict는 이미 좋아요한 경우 - 정상 처리
-          if (err.response?.status === 409) {
+          if (axios.isAxiosError(err) && err.response?.status === 409) {
             // 이미 좋아요한 상태이므로 최신 정보 조회하여 동기화
             const likeInfo = await likesApi.getLikeInfo(postId);
-            if (likeInfo && likeInfo.data) {
+            if (likeInfo?.data) {
               const newLikeCount = Number(likeInfo.data.likeCount);
               const newCheckLike = Boolean(likeInfo.data.checkLike);
               if (!isNaN(newLikeCount) && newLikeCount >= 0) {

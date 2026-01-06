@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import axios from 'axios';
 import { User, UserGetResponse } from '../types';
 import { authApi } from '../api/auth';
 import { usersApi } from '../api/users';
@@ -43,10 +44,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (user) {
         saveUserToStorage(user, response.data);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('사용자 정보 조회 실패:', error);
       // 401/403 에러인 경우 세션이 만료된 것으로 간주하고 자동 로그아웃
-      if (error.response?.status === 401 || error.response?.status === 403) {
+      if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
         setUser(null);
         setUserDetail(null);
         removeUserFromStorage();
@@ -82,9 +83,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setUser(saved.user);
             setUserDetail(response.data);
             saveUserToStorage(saved.user, response.data);
-          } catch (error: any) {
+          } catch (error: unknown) {
             // 세션이 만료되었거나 유효하지 않으면 상태와 localStorage 정리
-            if (error.response?.status === 401 || error.response?.status === 403) {
+            if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
               setUser(null);
               setUserDetail(null);
               removeUserFromStorage();
@@ -117,7 +118,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       // localStorage에 사용자 정보 저장
       saveUserToStorage(user, userData);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw error;
     }
   };
@@ -127,7 +128,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // 회원가입만 수행하고 로그인은 하지 않음
       await authApi.signup({ email, password, nickname });
       // 사용자 정보를 저장하지 않고 성공만 반환
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw error;
     }
   };
@@ -135,10 +136,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const logout = async () => {
     try {
       await authApi.logout();
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 401 에러는 세션이 이미 만료된 경우이므로 조용히 처리
       // 다른 에러도 로컬 상태는 정리해야 함
-      if (error.response?.status !== 401) {
+      if (!axios.isAxiosError(error) || error.response?.status !== 401) {
         console.error('로그아웃 API 호출 실패:', error);
       }
     } finally {
