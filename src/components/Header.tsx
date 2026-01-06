@@ -58,7 +58,7 @@ const Header = () => {
   }, [searchField]);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/90 backdrop-blur-md">
+    <header className="sticky top-0 z-[100] w-full border-b border-border bg-background/90 backdrop-blur-md">
       <div className="max-w-[1440px] mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2 group">
@@ -150,11 +150,11 @@ const Header = () => {
               >
                 New Post
               </button>
-              <div className="relative group cursor-pointer">
+              <div className="relative group cursor-pointer z-[100]">
                 <div className="size-9 rounded-full bg-gradient-to-br from-primary to-primary/80 border border-border flex items-center justify-center">
                   <span className="text-primary-foreground text-sm font-bold">{user?.nickname?.[0]?.toUpperCase() || 'U'}</span>
                 </div>
-                <div className="absolute right-0 top-full mt-2 w-48 bg-background-light dark:bg-surface-dark border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right">
+                <div className="absolute right-0 top-full mt-2 w-48 bg-background-light dark:bg-surface-dark border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-[100]">
                   <ul className="py-1 text-sm text-foreground">
                     <li>
                       <Link

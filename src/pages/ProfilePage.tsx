@@ -176,6 +176,21 @@ const ProfilePage = () => {
     const fetchFollowers = async () => {
       if (!targetUserId || !showFollowersModal) return;
 
+      // 팔로워 수가 0이면 API 호출 없이 빈 배열 설정
+      if (followersCount === 0) {
+        setFollowers([]);
+        setFollowersPageInfo({
+          page: 0,
+          size: 20,
+          totalElements: 0,
+          totalPages: 0,
+          first: true,
+          last: true,
+        });
+        setFollowersLoading(false);
+        return;
+      }
+
       try {
         setFollowersLoading(true);
         const response = await followsApi.getFollowers(targetUserId, { page: followersPage, size: 20 });
@@ -214,12 +229,27 @@ const ProfilePage = () => {
     };
 
     fetchFollowers();
-  }, [targetUserId, showFollowersModal, followersPage, isAuthenticated, user]);
+  }, [targetUserId, showFollowersModal, followersPage, isAuthenticated, user, followersCount]);
 
   // 팔로잉 목록 조회 (모달용)
   useEffect(() => {
     const fetchFollowings = async () => {
       if (!targetUserId || !showFollowingsModal) return;
+
+      // 팔로잉 수가 0이면 API 호출 없이 빈 배열 설정
+      if (followingsCount === 0) {
+        setFollowings([]);
+        setFollowingsPageInfo({
+          page: 0,
+          size: 20,
+          totalElements: 0,
+          totalPages: 0,
+          first: true,
+          last: true,
+        });
+        setFollowingsLoading(false);
+        return;
+      }
 
       try {
         setFollowingsLoading(true);
@@ -259,7 +289,7 @@ const ProfilePage = () => {
     };
 
     fetchFollowings();
-  }, [targetUserId, showFollowingsModal, followingsPage, isAuthenticated, user]);
+  }, [targetUserId, showFollowingsModal, followingsPage, isAuthenticated, user, followingsCount]);
 
   const handlePasswordVerify = useCallback(async () => {
     if (!user?.email || !password.trim()) {

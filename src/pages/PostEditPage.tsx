@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import { postsApi } from '../api/posts';
 import ProtectedRoute from '../components/ProtectedRoute';
 
@@ -75,6 +76,50 @@ const PostEditPage = () => {
     setTimeout(() => {
       textarea.focus();
       const newCursorPos = start + markdown.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  };
+
+  const insertHorizontalRule = () => {
+    const textarea = contentTextareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const beforeText = content.substring(0, start);
+    const afterText = content.substring(start);
+    
+    // 구분선은 항상 독립된 줄에 있어야 하므로 앞뒤에 빈 줄 보장
+    // 구분선 앞에 최소 2개의 줄바꿈이 필요 (빈 줄 보장)
+    let leadingNewlines = '';
+    if (beforeText.length > 0) {
+      if (beforeText.endsWith('\n\n')) {
+        // 이미 빈 줄이 있으면 추가하지 않음
+        leadingNewlines = '';
+      } else if (beforeText.endsWith('\n')) {
+        // 줄바꿈이 하나만 있으면 하나 더 추가
+        leadingNewlines = '\n';
+      } else {
+        // 줄바꿈이 없으면 2개 추가 (빈 줄 보장)
+        leadingNewlines = '\n\n';
+      }
+    }
+    
+    // 구분선 뒤에 최소 1개의 줄바꿈 필요
+    let trailingNewlines = '';
+    if (afterText.length > 0) {
+      if (!afterText.startsWith('\n')) {
+        trailingNewlines = '\n';
+      }
+      // 이미 줄바꿈이 있으면 추가하지 않음
+    }
+    
+    const horizontalRule = leadingNewlines + '---' + trailingNewlines;
+    const newText = beforeText + horizontalRule + afterText;
+    setContent(newText);
+
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + horizontalRule.length;
       textarea.setSelectionRange(newCursorPos, newCursorPos);
     }, 0);
   };
@@ -323,6 +368,14 @@ const PostEditPage = () => {
                     >
                       <span className="material-symbols-outlined text-[20px]">code_blocks</span>
                     </button>
+                    <button
+                      type="button"
+                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                      title="Horizontal Rule"
+                      onClick={insertHorizontalRule}
+                    >
+                      <span className="material-symbols-outlined text-[20px]">horizontal_rule</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -389,7 +442,7 @@ const PostEditPage = () => {
             <div className="flex-1 p-6 prose prose-slate dark:prose-invert max-w-none">
               {content.trim() ? (
                 <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
+                  remarkPlugins={[remarkGfm, remarkBreaks]}
                   components={{
                     h1: ({ node, ...props }) => (
                       <h1 className="text-3xl font-bold text-slate-900 dark:text-white mt-6 mb-4" {...props} />
@@ -463,7 +516,7 @@ const PostEditPage = () => {
                     ),
                   }}
                 >
-                  {content}
+                  {content.replace(/([^\n])---([^\n])/g, '$1\n\n---\n\n$2').replace(/([^\n])---$/gm, '$1\n\n---').replace(/^---([^\n])/gm, '---\n\n$1').replace(/^---$/gm, '\n---\n')}
                 </ReactMarkdown>
               ) : (
                 <div className="text-center text-gray-400 dark:text-[#55757d] mt-12">
